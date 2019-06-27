@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>akka-java</groupId>
-    <artifactId>cluster-sharding-openshift</artifactId>
+    <artifactId>cluster-sharding-kubernetes</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>
@@ -13,8 +13,8 @@
         <scala.version>2.12</scala.version>
         <akka.version>2.5.23</akka.version>
         <akka.http.version>10.1.8</akka.http.version>
-        <akka.cluster.bootstrap.version>1.0.0</akka.cluster.bootstrap.version>
-        <docker.image.version>1.0.2</docker.image.version>
+        <akka.cluster.bootstrap.version>1.0.1</akka.cluster.bootstrap.version>
+        <docker.image.version>1.0.0</docker.image.version>
         <jackson.version>2.9.9</jackson.version>
         <junit.version>4.12</junit.version>
         <junit.jupiter.version>5.0.2</junit.jupiter.version>
@@ -211,7 +211,7 @@
                                     <exec>
                                         <args>/bin/sh</args>
                                         <args>-c</args>
-                                        <args>java -jar /maven/cluster-sharding-openshift.jar</args>
+                                        <args>java -jar /maven/cluster-sharding-kubernetes.jar</args>
                                     </exec>
                                 </entryPoint>
                                 <assembly>
@@ -220,9 +220,9 @@
                                             <dependencySet>
                                                 <useProjectAttachments>true</useProjectAttachments>
                                                 <includes>
-                                                    <include>akka-java:cluster-sharding-openshift:jar:allinone</include>
+                                                    <include>akka-java:cluster-sharding-kubernetes:jar:allinone</include>
                                                 </includes>
-                                                <outputFileNameMapping>cluster-sharding-openshift.jar</outputFileNameMapping>
+                                                <outputFileNameMapping>cluster-sharding-kubernetes.jar</outputFileNameMapping>
                                             </dependencySet>
                                         </dependencySets>
                                     </inline>
