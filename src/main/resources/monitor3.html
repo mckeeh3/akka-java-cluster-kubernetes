@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv='Content-Type' content='text/html;charset=utf-8'>
+    <style type='text/css'>
+
+circle.node {
+  cursor: pointer;
+  stroke: #000;
+  stroke-width: .5px;
+}
+
+line.link {
+  fill: none;
+  stroke: #9ecae1;
+  stroke-width: 1.5px;
+}
+
+body {
+  font: 300 36px 'Helvetica Neue';
+  height: 900px;
+  margin: 80px 160px 80px 160px;
+  overflow: hidden;
+  position: relative;
+  width: 1400px;
+}
+
+a:hover {
+  color: #666;
+}
+
+h1 {
+  font-size: 64px;
+}
+
+h1, h2, h3 {
+  font-weight: inherit;
+  margin: 0;
+}
+
+h2, h3 {
+  text-align: right;
+  font-size: inherit;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+}
+
+h2 {
+  font-size: 24px;
+  position: absolute;
+}
+
+h3 {
+  bottom: -20px;
+  font-size: 18px;
+}
+
+text {
+  font-family: sans-serif;
+  font-size: 12px;
+  fill: #999;
+}
+
+body > svg {
+  position: absolute;
+  top: -80px;
+  left: -160px;
+}
+
+    </style>
+  </head>
+  <body>
+    <h2>
+      Akka OpenShift cluster<br>
+      force-directed graph
+    </h2>
+    <script type='text/javascript' src='http://mbostock.github.io/d3/talk/20111116/d3/d3.js'></script>
+    <script type='text/javascript' src='http://mbostock.github.io/d3/talk/20111116/d3/d3.geom.js'></script>
+    <script type='text/javascript' src='http://mbostock.github.io/d3/talk/20111116/d3/d3.layout.js'></script>
+    <script type='text/javascript'>
+
+var webSocket = new WebSocket('ws://' + location.host + '/events');
+
+webSocket.onopen = function(event) {
+  webSocket.send('request')
+  console.log('WebSocket connected', event)
+}
+
+webSocket.onmessage = function(event) {
+  console.log(event);
+  root = JSON.parse(event.data);
+  update();
+}
+
+webSocket.onerror = function(error) {
+  console.error('WebSocket error', error);
+  webSocket = undefined;
+}
+
+webSocket.onclose = function(event) {
+  console.log('WebSocket close', event);
+  webSocket = undefined;
+}
+
+var sendWebSocketRequestEnabled = true;
+
+setInterval(sendWebSocketRequest, 15000);
+
+function sendWebSocketRequest() {
+  if (webSocket === undefined) {
+    webSocket = new WebSocket('ws://' + locationHost + '/events');
+  } else if (sendWebSocketRequestEnabled) {
+    webSocket.send('request');
+  }
+}
+
+var w = 1600,
+    h = 1200,
+    node,
+    link,
+    root;
+
+// hack to get around problem with building g (group) child tags: circle, text, and title
+function forceInit() {
+  return d3.layout.force()
+      .on('tick', tick)
+      .charge(function(d) {
+          return d._children ? -d.size / 100 : -500;
+      })
+      .linkDistance(function(d) {
+          return d.target._children ? 100 : 100;
+      })
+      .size([w, h - 50]);
+}
+
+var svg = d3.select('body').append('svg:svg')
+    .attr('width', w)
+    .attr('height', h);
+
+function update() {
+  // hack to get around problem with building g (group) child tags: circle and text
+  d3.selectAll('.link').remove();
+  d3.selectAll('.node').remove();
+
+  var nodes = flatten(root),
+      links = d3.layout.tree().links(nodes),
+      force = forceInit();
+
+  force
+      .nodes(nodes)
+      .links(links)
+      .start();
+
+  link = svg.selectAll('line.link')
+      .data(links, function(d) { return d.target.id; });
+
+  link.enter().insert('svg:line', '.node')
+      .attr('class', 'link')
+      .attr('x1', function(d) { return d.source.x; })
+      .attr('y1', function(d) { return d.source.y; })
+      .attr('x2', function(d) { return d.target.x; })
+      .attr('y2', function(d) { return d.target.y; });
+
+  link.exit().remove();
+
+  node = svg.selectAll('g.node')
+      .data(nodes, function(d) {
+        return d.name;
+      });
+
+  node.enter().append('svg:g')
+      .attr('class', function(d) { return d.type ? 'node ' + d.type : 'node'; })
+      .on('click', click)
+      .on('dblclick', dblclick)
+      .on('mouseover', function() {
+        d3.select(this).select('text').style('font-size', 24).style('fill', '#046E97');
+      })
+      .on('mouseout', function(d) {
+        d3.select(this).select('text').style('font-size', 12).style('fill', '#999');
+      });
+
+  node.append('svg:circle')
+      .attr('class', function(d) { return d.type ? 'node ' + d.type : 'node'; })
+      .attr('r', radius)
+      .style('fill', color)
+      .style('stroke', '#FFF')
+      .style('stroke-width', 3);
+
+  node.append('svg:text')
+      .text(function(d) {
+        return d.name;
+      })
+      .classed('label', true)
+      .attr('x', labelOffsetX)
+      .attr('y', 3);
+
+  node.call(force.drag);
+
+  node.exit().remove();
+
+  d3.selectAll('text')
+}
+
+function tick() {
+  link.attr('x1', function(d) { return d.source.x; })
+      .attr('y1', function(d) { return d.source.y; })
+      .attr('x2', function(d) { return d.target.x; })
+      .attr('y2', function(d) { return d.target.y; });
+
+    node.attr('transform', function(d) {
+	  return 'translate(' + d.x + ',' + d.y + ')';
+    });
+}
+
+function color(d) {
+    if (d._children) {
+        return '#3182bd';
+    } else if (d.type == 'cluster') {
+        return '#B30000';
+    } else if (d.type == 'member') {
+        return '#F17D00';
+    } else if (d.type == 'shard') {
+        return '#00C000';
+    } else if (d.type == 'entity') {
+        return '#046E97';
+    } else {
+        return '#fd8d3c';
+    }
+}
+
+function radius(d) {
+    if (d._children) {
+        return Math.sqrt(d.size) / 10;
+    } else if (d.type == 'cluster') {
+        return 10;
+    } else if (d.type == 'member') {
+        return 22;
+    } else if (d.type == 'shard') {
+        return 12;
+    } else if (d.type == 'entity') {
+        return 8;
+    } else {
+        return 4.5;
+    }
+}
+
+function labelOffsetX(d) {
+    if (d._children) {
+        return Math.sqrt(d.size) / 10;
+    } else if (d.type == 'cluster') {
+        return 12;
+    } else if (d.type == 'member') {
+        return 24;
+    } else if (d.type == 'shard') {
+        return 14;
+    } else if (d.type == 'entity') {
+        return 10;
+    } else {
+        return 4.5;
+    }
+}
+
+function click(d) {
+  sendWebSocketRequestEnabled = !sendWebSocketRequestEnabled;
+}
+
+function dblclick(d) {
+  d;
+}
+
+function flatten(root) {
+  var nodes = [], i = 0;
+
+  function recurse(node) {
+    if (node.children) node.size = node.children.reduce(function(p, v) { return p + recurse(v); }, 0);
+//    if (!node.id) node.id = ++i;
+    if (!node.id) node.id = node.name;
+    nodes.push(node);
+    return node.size;
+  }
+
+  root.size = recurse(root);
+  return nodes;
+}
+
+function root() {
+    return {
+        'name' : 'cluster',
+        'type' : 'cluster',
+        'children' : [
+            {
+                'name' : 'member1',
+                'type' : 'member',
+                'children' : [
+                    {
+                        'name' : 'shard11',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity111', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity112', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity113', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity114', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                    {
+                        'name' : 'shard12',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity121', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity122', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity123', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity124', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                ]
+            },
+            {
+                'name' : 'member2',
+                'type' : 'member',
+                'children' : [
+                    {
+                        'name' : 'shard21',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity211', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity212', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity213', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity214', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                    {
+                        'name' : 'shard22',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity221', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity222', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity223', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity224', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                ]
+            },
+            {
+                'name' : 'member3',
+                'type' : 'member',
+                'children' : [
+                    {
+                        'name' : 'shard31',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity311', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity312', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity313', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity314', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                    {
+                        'name' : 'shard32',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity321', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity322', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity323', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity324', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                ]
+            },
+        ]
+    }
+}
+
+//setTimeout(updateRoot2, 15000);
+
+function updateRoot2() {
+    root = root2();
+    update();
+}
+
+function root2() {
+    return {
+        'name' : 'cluster',
+        'type' : 'cluster',
+        'children' : [
+            {
+                'name' : 'member1',
+                'type' : 'member',
+                'children' : [
+                    {
+                        'name' : 'shard11',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity111', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity112', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity113', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity114', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                    {
+                        'name' : 'shard12',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity121', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity122', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity123', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity124', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                ]
+            },
+            {
+                'name' : 'member2',
+                'type' : 'member',
+                'children' : [
+                    {
+                        'name' : 'shard21',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity211', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity212', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity213', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity214', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                    {
+                        'name' : 'shard22',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity221', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity222', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity223', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity224', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity225', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity226', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                ]
+            },
+            {
+                'name' : 'member3',
+                'type' : 'member',
+                'children' : [
+                    {
+                        'name' : 'shard31',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity311', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity312', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity313', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity314', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                    {
+                        'name' : 'shard32',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity321', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity322', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity323', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity324', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                ]
+            },
+        ]
+    }
+}
+
+//setTimeout(updateRoot3, 30000);
+
+function updateRoot3() {
+    root = root3();
+    update();
+}
+
+function root3() {
+    return {
+        'name' : 'cluster',
+        'type' : 'cluster',
+        'children' : [
+            {
+                'name' : 'member1',
+                'type' : 'member',
+                'children' : [
+                    {
+                        'name' : 'shard11',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity111', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity112', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity113', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity114', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                    {
+                        'name' : 'shard12',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity121', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity122', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity123', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity124', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                ]
+            },
+            {
+                'name' : 'member2',
+                'type' : 'member',
+                'children' : [
+                    {
+                        'name' : 'shard21',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity211', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity212', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity213', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity214', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                    {
+                        'name' : 'shard22',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity221', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity222', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity223', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity224', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity225', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity226', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                ]
+            },
+            {
+                'name' : 'member3',
+                'type' : 'member',
+                'children' : [
+                    {
+                        'name' : 'shard31',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity311', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity312', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity313', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity314', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                    {
+                        'name' : 'shard32',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity321', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity322', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity323', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity324', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                    {
+                        'name' : 'shard33',
+                        'type' : 'shard',
+                        'children' : [
+                            { 'name' : 'entity331', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity332', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity333', 'type' : 'entity', 'size' : 1000 },
+                            { 'name' : 'entity334', 'type' : 'entity', 'size' : 1000 }
+                        ]
+                    },
+                ]
+            },
+        ]
+    }
+}
+    </script>
+  </body>
+</html>

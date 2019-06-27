@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+
+<style>
+
+.axisX text {
+    font-size: 12px;
+    color: #894100;
+}
+
+.axisY text {
+    font-size: 12px;
+    font-family: monospace;
+    color: #894100;
+}
+
+.axisX line {
+    stroke: #EC6F00;
+}
+
+.axisY line {
+    stroke: #EC6F00;
+}
+
+</style>
+
+<div class='graph' width='500' height='300'></div>
+<div id='graph2' width='500' height='300'></div>
+<div id='graph3' width='500' height='300'></div>
+
+<script src='d3/d3.v5.js'></script>
+<script>
+
+const entityCountExtractor = function(statistic) {
+    return 0;
+}
+
+const commandCountExtractor = function(statistic) {
+    return 0;
+}
+
+const entityCountChart = activityChart('.graph', entityCountExtractor);
+
+function activityChart(activityTagSelect, countExtractor) {
+
+    var data = {
+        statistics: [
+            { time: Date.now() - 2 * 60 * 1000, entityCount: 0, commandCount: 0 },
+            { time: Date.now(), entityCount: 0, commandCount: 0 }
+        ]
+    }
+
+    function dataFirst() {
+        return data.statistics[0];
+    }
+
+    function dataLast() {
+        return data.statistics[data.statistics.length - 1];
+    }
+
+    const graphDiv = d3.select(activityTagSelect);
+
+    const margin = {top: 20, right: 0, bottom: 20, left: 0},
+          width = +graphDiv.attr('width') - margin.left - margin.right,
+          height = +graphDiv.attr('height') - margin.top - margin.bottom;
+
+    const svg = d3.select('.graph')
+            .append('svg')
+                .attr('width', width)
+                .attr('height', height + 50); // add 50 to make room for X axis
+
+    const gGraph = svg.append('g')
+            .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+    const formatNumber = d3.format('d'),
+          duration = 5000;
+
+    const timeStart = new Date(dataFirst().time),
+          timeEnd = new Date(dataLast().time);
+
+    const x = d3.scaleTime()
+                .domain([timeStart, timeEnd])
+                .range([0, width]);
+
+    const y = d3.scaleLinear()
+                .domain([0, 50])
+                .range([height, 0]);
+
+    const xAxis = d3.axisBottom(x)
+                    .ticks(d3.timeSecond.every(10));
+
+    const yAxis = d3.axisRight(y)
+                    .tickSize(width)
+                    .ticks(5)
+                    .tickFormat(function(d) {
+                        var s = formatNumber(d);
+                        return this.parentNode.nextSibling
+                                ? s
+                                : s + ' Ops';
+        });
+
+    const line = d3.line()
+                   .x(function(d) { return d.time; })
+                   .y(function(d) { return d.count; });
+
+    var data = d3.range(24).map(function() {
+        return { time: 0, count: 0 };
+    });
+
+    function count() {
+        return Math.round(Math.random() * 10 + 5);
+    }
+
+    function timeBefore(time, offsetSeconds) {
+        return new Date(time - offsetSeconds * 1000);
+    }
+
+    const gAxisX = gGraph.append('g')
+        .attr('transform', 'translate(0,' + height + ')')
+        .attr('class', 'axisX')
+        .call(customAxisX);
+
+    gGraph.append('g')
+        .attr('class', 'axisY')
+        .call(customAxisY);
+
+    const lines = gGraph.append('g');
+
+    function customAxisX(g) {
+      g.call(xAxis);
+      g.select('.domain').remove();
+    }
+
+    function customAxisY(g) {
+      g.call(yAxis);
+      g.select('.domain').remove();
+      g.selectAll('.tick:not(:first-of-type) line').attr('stroke-dasharray', '2,2');
+      g.selectAll('.tick text').attr('x', 4).attr('dy', -4);
+    }
+
+    function tick() {
+        var now = new Date();
+
+        x.domain([now - 24 * duration, now]);
+
+        gAxisX.transition()
+            .duration(1000)
+            .ease(d3.easeLinear)
+            .call(customAxisX);
+
+        lines.attr('transform', null)
+            .transition()
+            .duration(1000)
+            .ease(d3.easeLinear)
+            // .attr('transform', 'translate(' + x(now - (24 - 1) * 1000) + ')')
+            .attr('transform', 'translate(' + x(now - (24 - 1) * 1000) + ')')
+            .on('end', tick);
+    }
+
+    tick();
+
+    function update(data) {
+        this.data = data;
+    }
+
+    return {
+        update: update
+    }
+}
+
+function dataInit(count) {
+    data = {
+        statistics: []
+    }
+
+    var time = Date.now();
+    for (var i = 0; i < count; i++) {
+        data.statistics.push({
+            time: time,
+            entityCount: Math.round(Math.random(10) * 20 + 10),
+            commandCount: Math.round(Math.random(10) * 5 + 1)
+        });
+        time -= Math.round(Math.random() * 250 + 900);
+    }
+
+    return data;
+}
+
+function dataUpdate(data) {
+    data.statistics.push({
+        time: Date.now(),
+        entityCount: Math.round(Math.random(10) * 20 + 10),
+        commandCount: Math.round(Math.random(10) * 5 + 1)
+    });
+    data.statistics.shift();
+}
+
+entityCountChart.update(dataInit(120));
+setInterval(1000, dataUpdate, entityCountChart.data);
+
+</script>

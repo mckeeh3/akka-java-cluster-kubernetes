@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<meta charset='utf-8'>
+<style>
+
+/* Make the chart container fill the page using CSS. */
+#chart {
+  position: fixed;
+  left: 0px;
+  right: 0px;
+  top: 0px;
+  bottom: 0px;
+}
+
+g {
+  width: inherit;
+  height: inherit;
+}
+
+path.link {
+  fill: none;
+  stroke: #2194e3;
+  stroke-width: 3px;
+}
+
+text {
+  font-family: sans-serif;
+  font-size: 12px;
+  fill: #999;
+}
+
+</style>
+<div id='chart'><svg></svg></div>
+<script src="d3/d3.v5.js"></script>
+<script>
+
+var webSocket;
+
+function sendWebSocketRequest(request) {
+  if (webSocket && webSocket.readyState == WebSocket.OPEN) {
+    webSocket.send(request);
+  } else {
+    webSocket = new WebSocket('ws://' + location.host + '/events');
+    update({ 'name': 'cluster', 'type': 'cluster' });
+
+    webSocket.onopen = function(event) {
+      console.log('WebSocket connected', event);
+      webSocket.send(request);
+    }
+
+    webSocket.onmessage = function(event) {
+      console.log(event);
+      root = JSON.parse(event.data);
+      update(root);
+    }
+
+    webSocket.onerror = function(error) {
+      console.error('WebSocket error', error);
+    }
+
+    webSocket.onclose = function(event) {
+      console.log('WebSocket close', event);
+    }
+  }
+}
+
+const chartDiv = document.getElementById('chart');
+const width = chartDiv.clientWidth;
+const height = chartDiv.clientHeight;
+const radius = height / 2;
+const tree = d3.tree().size([2 * Math.PI, radius - 75]);
+
+const svg = d3.select('svg')
+  .style('width', width)
+  .style('height', height)
+  .style('padding', '10px')
+  .style('box-sizing', 'border-box')
+  .style('font', 'sans-serif');
+
+const g = svg.append('g')
+  .attr('transform', 'translate(' + width / 2 + ',' + height / 2 + ')');
+
+const gLink = g.append('g')
+  .attr('class', 'links')
+  .attr('fill', 'none')
+  .attr('stroke', '#555')
+  .attr('stroke-opacity', '0.4')
+  .attr('stroke-width', 1.5);
+
+const gNode = g.append('g')
+  .attr('class', 'nodes')
+  .attr('stroke-linejoin', 'round')
+  .attr('stroke-width', 3);
+
+sendWebSocketRequest();
+setInterval(sendWebSocketRequest, 5000);
+
+function update(hierarchy) {
+  const t1 = d3.transition()
+    .duration(750);
+
+  const t2 = d3.transition()
+    .delay(750)
+    .duration(750);
+
+  const t3 = d3.transition()
+    .delay(1500)
+    .duration(750);
+
+  const root = tree(d3.hierarchy(hierarchy));
+
+  const link = gLink.selectAll('path')
+    .data(root.links(), linkId);
+
+  const linkEnter = link.enter().append('path')
+    .attr('id', d => linkId)
+    .attr('class', d => 'link ' + d.source.data.type)
+    .style('opacity', 0.000001)
+    .attr('d', d3.linkRadial()
+                 .angle(d => d.x)
+                 .radius(d => d.y));
+
+  link.transition(t2)
+    .style('opacity', 1.0)
+    .attr('d', d3.linkRadial()
+    .angle(d => d.x)
+    .radius(d => d.y));
+
+  linkEnter.transition(t3)
+    .style('opacity', 1.0);
+
+  link.exit()
+    .transition(t1)
+    .style('opacity', 0.000001)
+    .remove();
+
+  const node = gNode.selectAll('g')
+    .data(root.descendants(), nodeId);
+
+  const nodeEnter = node.enter().append('g')
+    .attr('id', nodeId)
+    .attr('class', d => 'node ' + d.data.type)
+    .attr('transform', d => `rotate(${d.x * 180 / Math.PI - 90}) translate(${d.y},0)`)
+    .on('mouseover', function() {
+      d3.select(this).select('text').style('font-size', 24).style('fill', '#046E97');
+    })
+    .on('mouseout', function(d) {
+      d3.select(this).select('text').style('font-size', 12).style('fill', '#999');
+    });
+
+  nodeEnter.append('circle')
+    .attr('class', d => d.data.type)
+    .attr('fill', circleColor)
+    .attr('r', circleRadius)
+    .attr('cursor', nodeCursor)
+    .on('click', clickCircle)
+    .style('opacity', 0.000001);
+
+  nodeEnter.append('text')
+    .attr('dy', '0.31em')
+    .attr('x', labelOffsetX)
+    .attr('text-anchor', d => d.x < Math.PI === !d.children ? 'start' : 'end')
+    .attr('transform', d => d.x >= Math.PI ? 'rotate(180)' : null)
+    .style('opacity', 0.000001)
+    .text(d => d.data.name);
+
+  nodeEnter.append('title')
+    .text(d => d.data.type);
+
+  node.transition(t2)
+    .attr('transform', d => `rotate(${d.x * 180 / Math.PI - 90}) translate(${d.y},0)`)
+    .select('circle.entity')
+      .attr('r', circleRadius)
+      .style('fill', '#42aaff')
+      .style('opacity', 1.0);
+
+  node.transition(t2)
+    .select('text')
+      .style('opacity', 1.0);
+
+  nodeEnter.transition(t3)
+    .select('circle')
+      .style('opacity', 1.0);
+
+  nodeEnter.transition(t3)
+    .select('text')
+      .style('opacity', 1.0);
+
+  node.exit()
+    .transition(t1)
+    .select('circle')
+      .attr('r', circleRadiusExit)
+      .style('opacity', 0.000001)
+      .style('fill', 'red');
+
+  node.exit()
+    .transition(t1)
+    .select('text')
+      .style('opacity', 0.000001);
+
+  node.exit()
+    .transition(t1)
+    .remove();
+}
+
+function linkId(d) {
+  return d.source.data.name + '-' + d.target.data.name;
+}
+
+function nodeId(d) {
+  return d.data.type + '-' + d.data.name;
+}
+
+function circleColor(d) {
+    if (d.data.type.includes('entity')) {
+        return '#046E97';
+    } else if (d.data.type.includes('shard')) {
+        return '#00C000';
+    } else if (d.data.type.includes('singleton')) {
+        return '#BA6000';
+    } else if (d.data.type.includes('httpServer')) {
+        return '#F3B500';
+    } else if (d.data.type.includes('member')) {
+        return '#F17D00';
+    } else if (d.data.type.includes('cluster')) {
+        return '#B30000';
+    } else {
+        return 'red';
+    }
+}
+
+function circleRadius(d) {
+    if (d.data.type.includes('entity')) {
+        return 8;
+    } else if (d.data.type.includes('shard')) {
+        return 12;
+    } else if (d.data.type.includes('member')) {
+        return 22;
+    } else if (d.data.type.includes('cluster')) {
+        return 10;
+    } else {
+        return 3;
+    }
+}
+
+function circleRadiusExit(d) {
+    return 4 * circleRadius(d);
+}
+
+function labelOffsetX(d) {
+    if (d.data.type.includes('entity')) {
+        return offset(d, 10);
+    } else if (d.data.type.includes('shard')) {
+        return offset(d, 14);
+    } else if (d.data.type.includes('member')) {
+        return offset(d, 24);
+    } else if (d.data.type.includes('cluster')) {
+        return offset(d, 12);
+    } else {
+        return offset(d, 5);
+    }
+
+    function offset(d, distance) {
+        return d.x < Math.PI === !d.children ? distance : -distance;
+    }
+}
+
+function nodeCursor(d) {
+    return d.data.type.indexOf('member') >= 0 ? 'pointer' : 'default';
+}
+
+function clickCircle(d) {
+    if (d.data.type.indexOf('member') >= 0) {
+        sendWebSocketRequest(d.data.name);
+    }
+}
+
+</script>
