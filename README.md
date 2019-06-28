@@ -28,3 +28,39 @@ This project contains an example implementation of cluster sharding running in a
 Once this application is successfully deployed to a properly configured Kubernetes cluster you will be able to pull up a live view of the running system, as shown above in Figure 1.
 
 TODO
+
+### Installation
+
+There are several options for how we set up a running Kubernetes environment. You can install everything on your local development system, or you can use one fo the cloud-based offerings. In addition to setting up a Kubernetes environment, you will also need to install Docker on your local development system. Of course, you will also need to install Java 8 and Maven 3.6.x.
+
+#### Install Java and Maven
+"There are various ways to get free updates (including security), and (new and existing) paid support models available from various vendors to consider." - [Source Java is Still Free](https://medium.com/@javachampions/java-is-still-free-c02aef8c9e04).
+
+You can find Java downloads at the followinf locations:
+
+* [AdoptOpenJDK](https://adoptopenjdk.net/)
+* [Amazon](https://aws.amazon.com/corretto/)
+* [Azul](https://www.azul.com/products/zulu-enterprise/)
+* [BellSoft](https://bell-sw.com/java.html)
+* [IBM](https://www.ibm.com/marketplace/support-for-runtimes)
+* [jClarity](https://www.jclarity.com/)
+* [Red Hat](https://access.redhat.com/articles/1299013)
+* [SAP](https://github.com/SAP/SapMachine)
+
+The [ApaptOpenJDK](https://adoptopenjdk.net/) is recommended as this is the JDK that Lightbend engineerin teams build against.
+
+Maven 3.6.x is available for download on the Apache Maven [download page](https://maven.apache.org/download.cgi).
+
+#### Install Docker
+
+This project includes two Maven plugins. One of the plugins creates a self-contained JAR file that contains all of the compiled project class files and all of the dependencies. The other plugin creates a Docker image that contains the JAR file and the necessary settings that are used to run the Java code.
+
+Follow the link for the [Docker installation](https://hub.docker.com/search?q=&type=edition&offering=community) for your device.
+
+#### Install Kubernetes MiniKube Locally
+
+Instructions and download are available on the [Install MiniKube](https://kubernetes.io/docs/tasks/tools/install-minikube/) page.
+
+#### Install OpenShift MiniShift
+
+TODO
