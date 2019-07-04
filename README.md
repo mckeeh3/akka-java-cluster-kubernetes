@@ -49,7 +49,7 @@ There are several options for how we set up a running Kubernetes environment. Yo
 
 "There are various ways to get free updates (including security), and (new and existing) paid support models available from various vendors to consider." - [Source Java is Still Free](https://medium.com/@javachampions/java-is-still-free-c02aef8c9e04).
 
-You can find Java downloads at the followinf locations:
+You can find Java downloads at the following locations:
 
 * [AdoptOpenJDK](https://adoptopenjdk.net/)
 * [Amazon](https://aws.amazon.com/corretto/)
