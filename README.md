@@ -37,11 +37,9 @@ This tree starts with a single root element that represents the cluster. The nex
 
 In the visualization shown in Figure 1, the three large circles represent the Akka cluster nodes. These circles are shown using the colors brown, orange, and yellow. A yellow circle indicates which node is receiving HTTP requests from the browser. A brown circle is used to show where cluster singleton actors are currently located in the cluster. Orange circles show other cluster nodes.
 
-Continuing up from the Akka node tree elements are shard actor elements. Shard actors are used in Akka Cluster Sharding to distribute entity actor instances across the cluster nodes. In the visualized tree the shard actors are shown as green circles.
+Continuing up from the Akka node tree elements are shard actor elements. Shard actors are used in Akka Cluster Sharding to distribute entity actor instances across the cluster nodes. In the visualized tree the shard actors are shown as green circles. There are a fixed number of shard actors. The number of shard actors is defined in the `application.conf` file. In the visualization, you will see that the fixed number of shard actors will redistribute themselves across the cluster and the number of cluster nodes changes.
 
 The tree leaf elements represent individual entity actors. The entity actors are shown as blue circles. When an entity actor instance is first started, the color used is a darker blue. When an entity actor instance is stopped the color fades to pink and then the circle disappears.
-
-TODO
 
 ### Installation
 
@@ -127,6 +125,24 @@ akka-cluster-demo-56c6c46cb4-5zvpl   1/1     Running   16         22d
 akka-cluster-demo-56c6c46cb4-khl6g   1/1     Running   6          14d
 akka-cluster-demo-56c6c46cb4-thscr   1/1     Running   8          22d
 ~~~
+
+After the Kubernetes pods are started the next step is to expose the visualization web page to an accessible network location.
+
+~~~bash
+expose deployment/akka-cluster-demo --type=NodePort --port 8080
+~~~
+
+The visualization web page should now be accessible. Use the following commands to obtain the web page port and the IP address.
+
+~~~bash
+export NODE_IP=$(kubectl ip)
+
+export NODE_PORT=$(kubectl get services/akka-cluster-demo -o go-template='{{(index .spec.ports 0).nodePort}}')
+
+echo http://$NODE_IP:$NODE_PORT
+~~~
+
+Use the above URL to access the visualization web page.
 
 ### Running the Cluster demo
 
