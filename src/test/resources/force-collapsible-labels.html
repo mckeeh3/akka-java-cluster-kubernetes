@@ -136,8 +136,8 @@ function forceInit() {
 }
 
 var svg = d3.select('body').append('svg:svg')
-    .attr('width', w)
-    .attr('height', h);
+    .attr('width', w + 'px')
+    .attr('height', h + 'px');
 
 function update() {
   // hack to get around problem with building g (group) child tags: circle and text

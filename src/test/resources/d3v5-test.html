@@ -23,8 +23,8 @@ text {
 <script>
 
 var svg = d3.select('svg'),
-    width = +svg.attr('width'),
-    height = +svg.attr('height');
+    width = +svg.attr('width' + 'px'),
+    height = +svg.attr('height' + 'px');
 
 function color(d) {
     if (d.data.type == 'cluster') {

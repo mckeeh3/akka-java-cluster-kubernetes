@@ -73,8 +73,8 @@ const radius = height / 2;
 const tree = d3.tree().size([2 * Math.PI, radius - 75]);
 
 const svg = d3.select('svg')
-  .style('width', width)
-  .style('height', height)
+  .style('width', width + 'px')
+  .style('height', height + 'px')
   .style('padding', '10px')
   .style('box-sizing', 'border-box')
   .style('font', 'sans-serif');
