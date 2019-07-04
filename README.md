@@ -164,3 +164,60 @@ akka-cluster-demo-56c6c46cb4-thscr   1/1       Terminating   8          22d
 ~~~
 
 Click one of the pod circles to simulate the loss of a pod. Clicking a pod will trigger the JVM to stop, which will trigger Kubernetes to restart the pod. Visually this is shown where the clicked pod and all of the associated actors disappear. Kubernetes reacts by restarting the pod. In the visualization, you will see a new pod appear after a brief period.
+
+### The Visualization and Akka Cluster Aware Actors
+
+The visualization of the cluster presents an interesting problem. In the visualization, actors are shown from across the cluster. However, browser requests from the visualization web page of course land on a single cluster node. So the challenge is how to show all of the activity from across the cluster from a single node? The solution is using cluster-aware actors. A cluster-aware actor knows, by design, that there are instances of itself on each node in the cluster. When one of the cluster-aware actors receives a message, this can trigger that actor to send messages to the other instances of itself. In the case of the visualization, when an `EntityActor` starts or stops, it sends a message to the `HttpServerActorntity`. These entity messages are used to add or remove the corresponding tree elements that are used to show entities in the visualization tree.
+
+~~~java
+private void notifyStart() {
+    EntityMessage.Action start = new EntityMessage.Action(memberId, shardId, entityId, "start", true);
+    httpServer.tell(start, self());
+}
+
+private void notifyStop() {
+    EntityMessage.Action stop = new EntityMessage.Action(memberId, shardId, entityId, "stop", true);
+    httpServer.tell(stop, self());
+}
+~~~
+
+The `EntityActor` contains two methods, `notifyStart()` and `notifyStop()`. These methods are invoked when an instance of an entity actor instance is started or stopped. Note that this actor sends a message to the `HttpServerActor`.
+
+~~~java
+private void actionEntity(EntityMessage.Action action) {
+    log().info("Entity {} <-- {}", action, sender());
+    if (action.action.equals("start")) {
+        tree.add(action.member, action.shardId, action.entityId);
+    } else if (action.action.equals("stop")) {
+        tree.remove(action.member, action.shardId, action.entityId);
+    }
+    if (action.forward) {
+        forwardAction(action.asNoForward());
+    }
+}
+~~~
+
+When an `HttpServerActor` receives a start or stop message from an entity actor, it invokes the 'actionEntity(...)` method. Note that the tree object adds or removes the entity based on the information provided in the actor message. Then, if the message forward flag is true, the `forwardAction(...)` method is invoked.
+
+~~~java
+private void forwardAction(Object action) {
+    cluster.state().getMembers().forEach(member -> {
+        if (!cluster.selfMember().equals(member) && member.status().equals(MemberStatus.up())) {
+            forwardAction(action, member);
+        }
+    });
+}
+
+private void forwardAction(Object action, Member member) {
+    String httpServerPath = member.address().toString() + self().path().toStringWithoutAddress();
+    ActorSelection httpServer = context().actorSelection(httpServerPath);
+    log().debug("{} --> {}", action, httpServer);
+    httpServer.tell(action, self());
+}
+~~~
+
+There are two overloaded `forwardAction(...)` methods. The first method loops through all of the nodes in the cluster. In the loop, cluster members are filtered to select only node members that are in the `up` state and are not this node.
+
+The second `forwardAction` method builds an actor selection, which is similar to actor references, using the passed member info and the path part of this actor's actor reference. Note that the forward flag in the forwarded message is set to false.
+
+So the flow here is that as each `EntityActor` starts or stops it sends an action message to an `HttpServerActor`, which happens to be an instance of the `HttpServerActor` running on the same node as the `EntityActor`. The `HttpServerActor` is cluster aware, it has the necessary code that forwards the action messages on to the other `HttpServerActors` running on each node in the cluster.
