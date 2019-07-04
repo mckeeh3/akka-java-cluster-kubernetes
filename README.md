@@ -128,4 +128,39 @@ akka-cluster-demo-56c6c46cb4-khl6g   1/1     Running   6          14d
 akka-cluster-demo-56c6c46cb4-thscr   1/1     Running   8          22d
 ~~~
 
-TODO
+### Running the Cluster demo
+
+Once the cluster is running, you can simulate the elasticity and resilience of the Akka cluster running in a Kubernetes environment. With Kubernetes, you can configure a cluster to auto scale the number of running pods based on CPU and memory utilization. With the cluster visualization, you can demonstrate what happens when the cluster is scaled up or down by manually scaling up or down the number of running pods.
+
+~~~bash
+kubectl scale --replicas=5 deployment/akka-cluster-demo
+~~~
+
+Use the `kubectl` or `oc` command to view the number of running pods.
+
+~~~bash
+$ kubectl get pods
+NAME                                 READY   STATUS    RESTARTS   AGE
+akka-cluster-demo-56c6c46cb4-5hk7p   1/1     Running   0          1m
+akka-cluster-demo-56c6c46cb4-5zvpl   1/1     Running   16         22d
+akka-cluster-demo-56c6c46cb4-khl6g   1/1     Running   6          14d
+akka-cluster-demo-56c6c46cb4-lx9mv   1/1     Running   0          1m
+akka-cluster-demo-56c6c46cb4-thscr   1/1     Running   8          22d
+~~~
+
+With auto-scaling, the number of running pods are adjusted as the CPU or memory loads change. Manually you can scale down the number of nodes to simulate this and then use the cluster visualization to view what is happening both at the Kubernetes level and the Akka level.
+
+~~~bash
+$ kubectl scale --replicas=1 deployment/akka-cluster-demo
+deployment.extensions/akka-cluster-demo scaled
+
+$ kubectl get pods
+NAME                                 READY     STATUS        RESTARTS   AGE
+akka-cluster-demo-56c6c46cb4-5hk7p   1/1       Terminating   0          8m
+akka-cluster-demo-56c6c46cb4-5zvpl   1/1       Terminating   16         22d
+akka-cluster-demo-56c6c46cb4-khl6g   1/1       Running       6          14d
+akka-cluster-demo-56c6c46cb4-lx9mv   1/1       Terminating   0          8m
+akka-cluster-demo-56c6c46cb4-thscr   1/1       Terminating   8          22d
+~~~
+
+Click one of the pod circles to simulate the loss of a pod. Clicking a pod will trigger the JVM to stop, which will trigger Kubernetes to restart the pod. Visually this is shown where the clicked pod and all of the associated actors disappear. Kubernetes reacts by restarting the pod. In the visualization, you will see a new pod appear after a brief period.
