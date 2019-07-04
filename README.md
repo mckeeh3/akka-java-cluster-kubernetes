@@ -106,6 +106,26 @@ First, a Role and RoleBinging are set up. The Role and RoleBinding give the pods
 kubectl apply -f kubernetes/akka-cluster-rolebindging.yml
 ~~~
 
+Or, for example, deploy using MiniShift.
 
+~~~bash
+oc apply -f kubernetes/akka-cluster-rolebindging.yml
+~~~
+
+The second step is to deploy the Docker image.
+
+~~~bash
+oc apply -f kubernetes/akka-cluster-deployment.yml
+~~~
+
+Three Kubernetes pods are started once the Docker image is deployed using the deployment YAML file.
+
+~~~bash
+$ kubectl get pods
+NAME                                 READY   STATUS    RESTARTS   AGE
+akka-cluster-demo-56c6c46cb4-5zvpl   1/1     Running   16         22d
+akka-cluster-demo-56c6c46cb4-khl6g   1/1     Running   6          14d
+akka-cluster-demo-56c6c46cb4-thscr   1/1     Running   8          22d
+~~~
 
 TODO
