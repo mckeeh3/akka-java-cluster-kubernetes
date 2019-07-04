@@ -35,7 +35,7 @@ The monitor web page uses a web socket to communicate with the HTTP server. The 
 
 This tree starts with a single root element that represents the cluster. The next tree elements up from the root represent Akka cluster nodes. These elements also represent actors that are started one per cluster node. An example of a single actor per cluster node is the `HttpServerActor`. One instance of this actor is started on each Akka cluster node.
 
-In the visualization shown in Figure 1, the three large circles represent the Akka cluster nodes. These circles are shown using the colors brown, orange, and yellow. A yellow circle indicates which node is receiving HTTP requests from the browser. A brown circle is used to show where cluster singleton actors are currently located in the cluster. Orange circles show other cluster nodes.
+In the visualization shown in Figure 1, the three large circles represent the Akka cluster nodes. These circles are shown using the colors brown, orange, and yellow. A yellow circle indicates which node is receiving HTTP requests from the browser. A brown circle is used to show where cluster singleton actors are currently located in the cluster. Orange circles show other cluster nodes. You can mouseover each large circle to see what each one represents.
 
 Continuing up from the Akka node tree elements are shard actor elements. Shard actors are used in Akka Cluster Sharding to distribute entity actor instances across the cluster nodes. In the visualized tree the shard actors are shown as green circles. There are a fixed number of shard actors. The number of shard actors is defined in the `application.conf` file. In the visualization, you will see that the fixed number of shard actors will redistribute themselves across the cluster and the number of cluster nodes changes.
 
@@ -179,11 +179,19 @@ akka-cluster-demo-56c6c46cb4-lx9mv   1/1       Terminating   0          8m
 akka-cluster-demo-56c6c46cb4-thscr   1/1       Terminating   8          22d
 ~~~
 
-Click one of the pod circles to simulate the loss of a pod. Clicking a pod will trigger the JVM to stop, which will trigger Kubernetes to restart the pod. Visually this is shown where the clicked pod and all of the associated actors disappear. Kubernetes reacts by restarting the pod. In the visualization, you will see a new pod appear after a brief period.
+A short time later the terminating pods should be gone.
+
+~~~bash
+$ kubectl get pods
+NAME                                 READY   STATUS    RESTARTS   AGE
+akka-cluster-demo-56c6c46cb4-khl6g   1/1     Running   6          14d
+~~~
+
+Click one of the pod circles in the visualization to simulate the loss of a pod. Clicking a pod will trigger the JVM to stop, which will trigger Kubernetes to restart the pod. Visually this is shown where the clicked pod and all of the associated actors disappear. Kubernetes reacts by restarting the pod. In the visualization, you will see a new pod appear after a brief period.
 
 ### The Visualization and Akka Cluster Aware Actors
 
-The visualization of the cluster presents an interesting problem. In the visualization, actors are shown from across the cluster. However, browser requests from the visualization web page of course land on a single cluster node. So the challenge is how to show all of the activity from across the cluster from a single node? The solution is using cluster-aware actors. A cluster-aware actor knows, by design, that there are instances of itself on each node in the cluster. When one of the cluster-aware actors receives a message, this can trigger that actor to send messages to the other instances of itself. In the case of the visualization, when an `EntityActor` starts or stops, it sends a message to the `HttpServerActorntity`. These entity messages are used to add or remove the corresponding tree elements that are used to show entities in the visualization tree.
+The visualization of the cluster presents an interesting problem. In the visualization, actors are shown from across the cluster. However, browser requests from the visualization web page of course land on a single cluster node. So the challenge is how to show all of the activity from across the cluster from a single node. The solution is using cluster-aware actors. A cluster-aware actor knows, by design, that there are instances of itself on each node in the cluster. When one of the cluster-aware actors receives a message, this can trigger that actor to send messages to the other instances of itself. In the case of the visualization, when an `EntityActor` starts or stops, it sends a message to the `HttpServerActorntity`. These entity messages are used to add or remove the corresponding tree elements that are used to show entities in the visualization tree.
 
 ~~~java
 private void notifyStart() {
@@ -213,7 +221,7 @@ private void actionEntity(EntityMessage.Action action) {
 }
 ~~~
 
-When an `HttpServerActor` receives a start or stop message from an entity actor, it invokes the 'actionEntity(...)` method. Note that the tree object adds or removes the entity based on the information provided in the actor message. Then, if the message forward flag is true, the `forwardAction(...)` method is invoked.
+When an `HttpServerActor` receives a start or stop message from an entity actor, it invokes the `actionEntity(...)` method. Note that the tree object adds or removes the entity based on the information provided in the actor message. Then, if the message forward flag is true, the `forwardAction(...)` method is invoked.
 
 ~~~java
 private void forwardAction(Object action) {
@@ -234,6 +242,6 @@ private void forwardAction(Object action, Member member) {
 
 There are two overloaded `forwardAction(...)` methods. The first method loops through all of the nodes in the cluster. In the loop, cluster members are filtered to select only node members that are in the `up` state and are not this node.
 
-The second `forwardAction` method builds an actor selection, which is similar to actor references, using the passed member info and the path part of this actor's actor reference. Note that the forward flag in the forwarded message is set to false.
+The second `forwardAction` method builds an [actor selection](https://doc.akka.io/docs/akka/current/general/addressing.html#how-are-actor-references-obtained-), which is similar to actor references, using the passed member info and the path part of this actor's actor reference. Note that the forward flag in the forwarded message is set to false.
 
 So the flow here is that as each `EntityActor` starts or stops it sends an action message to an `HttpServerActor`, which happens to be an instance of the `HttpServerActor` running on the same node as the `EntityActor`. The `HttpServerActor` is cluster aware, it has the necessary code that forwards the action messages on to the other `HttpServerActors` running on each node in the cluster.
