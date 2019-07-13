@@ -76,15 +76,66 @@ Instructions and download are available on the [Install MiniKube](https://kubern
 
 #### Install OpenShift MiniShift
 
-Instructions and download are availabel on the [Welcome to MiniShift](https://docs.okd.io/latest/minishift/index.html) page.
+Instructions and download are available on the [Welcome to MiniShift](https://docs.okd.io/latest/minishift/index.html) page.
 
 #### Using OpenShift Online
 
 TODO
 
-#### Uising IBM Cloud Kubernetes Service
+#### Using IBM Cloud Kubernetes Service
 
 TODO
+
+### Preparation Steps
+
+1. Make sure all environment variables are configured properly. You should be able to run the following commands:
+  - `docker --version`
+  - `kubectl --version`
+  - `minishift --version` (or `minikube --version`)
+ and that you have access to all the executables which will be necessary, namely: `docker`, `kubectl`, `minishift` (or `minikube`)
+2. Start the docker service if it isn't running already (if using Docker Toolbox this should require running "Docker Quickstart Terminal" (with administrator privileges if applicable))
+3. If using `minishift`, before running the `minishift start` command for the first time, make sure you have set the desired vm-driver (if applicable), with a command such as: `minishift config set vm-driver virtualbox` (for virtualbox driver)
+  - The first run may take a while because it will:
+    - Download OpenShift `oc` binary
+    - Download MiniShift ISO and start MiniShift VM
+    - Pull OpenShift Docker Container Image and start OpenShift Cluster
+4. Run `minishift start`
+5. Take note of the final output of that command, which should be something similar with the following:
+  ~~~bash
+  The server is accessible via web console at:
+    https://192.168.99.100:8443/console
+
+  You are logged in as:
+    User:     developer
+    Password: <any value>
+
+  To login as administrator:
+    oc login -u system:admin
+  ~~~
+6. Verify that you can access the web console and login as developer in the web console, and as system:admin in your terminal/shell window
+5. If using `minishift`, obtain the commands you need to type into your shell in order to add the `oc` binary to your `PATH` environment variable:
+  - `minishift docker-env`
+  - `minishift oc-env`
+  - Then run the respective commands. For example:
+  ~~~bash
+  eval $(minishift docker-env)
+  eval $(minishift oc-env)
+  ~~~
+6. Make sure you login from your terminal/shell with: `oc login -u system:admin`
+7. The kubernetes YAML files used throughout this project, refer to the `akka-cluster-1` namespace. First, we need to create it, in one of two ways:
+  - Using OpenShift/MiniShift:
+    - Login as `developer` in the Web UI and create a new project manually, with the appropriate name to match the intended namespace
+    - Or create it from the console make sure you are loggin as `developer`:
+      - If you followed the steps until this point, you should be
+      - If you previously ran: `oc login -u system:admin`, you can logout that user with: `oc logout`, and then, if necessary, run `oc login`, specifying `developer` as the user, and `<anything>` as the password, and then:
+        - `oc new-project akka-cluster-1 --description="Akka Java Cluster Kubernetes Example" --display-name="akka-cluster-1"` - This will create a project in OpenShift/MiniShift, which will include the respective namespace and will allow you to see its related content in the web UI
+  - Alternatively, if not using OpenShift/MiniKube, or if you just don't want the UI integration, you can create the namespace with `kubectl create namespace akka-cluster-1`
+8. Login as admin in the terminal/shell with: `oc login -u system:admin`
+9. Specify the namespace in use for the subsequent commands in this example by running:
+  - For OpenShift/MiniShift - `oc project akka-cluster-1`
+  - For Minikube or plain `kubectl` usage - `kubectl config set-context --current --namespace=akka-cluster-1` (alternatively, most kubectl commands can take a `--namespace akka-cluster-1` flag to explicitly reference this namespace)
+
+NOTE: In some cases when running download-intensive steps during workshops where multiple attendees are using the same network, sometimes the traffic from the external IP may be blocked. When this is the case, it is recommended to use a VPN connection in order to be able to proceed.
 
 ### Build and Deploy the Demo Application
 
@@ -129,13 +180,13 @@ akka-cluster-demo-56c6c46cb4-thscr   1/1     Running   8          22d
 After the Kubernetes pods are started the next step is to expose the visualization web page to an accessible network location.
 
 ~~~bash
-expose deployment/akka-cluster-demo --type=NodePort --port 8080
+oc expose deployment/akka-cluster-demo --type=NodePort --port 8080
 ~~~
 
 The visualization web page should now be accessible. Use the following commands to obtain the web page port and the IP address.
 
 ~~~bash
-export NODE_IP=$(kubectl ip)
+export NODE_IP=$(minishift ip) # or: $(minikube ip)
 
 export NODE_PORT=$(kubectl get services/akka-cluster-demo -o go-template='{{(index .spec.ports 0).nodePort}}')
 
@@ -191,7 +242,7 @@ Click one of the pod circles in the visualization to simulate the loss of a pod.
 
 ### The Visualization and Akka Cluster Aware Actors
 
-The visualization of the cluster presents an interesting problem. In the visualization, actors are shown from across the cluster. However, browser requests from the visualization web page of course land on a single cluster node. So the challenge is how to show all of the activity from across the cluster from a single node. The solution is using cluster-aware actors. A cluster-aware actor knows, by design, that there are instances of itself on each node in the cluster. When one of the cluster-aware actors receives a message, this can trigger that actor to send messages to the other instances of itself. In the case of the visualization, when an `EntityActor` starts or stops, it sends a message to the `HttpServerActorntity`. These entity messages are used to add or remove the corresponding tree elements that are used to show entities in the visualization tree.
+The visualization of the cluster presents an interesting problem. In the visualization, actors are shown from across the cluster. However, browser requests from the visualization web page of course land on a single cluster node. So the challenge is how to show all of the activity from across the cluster from a single node. The solution is using cluster-aware actors. A cluster-aware actor knows, by design, that there are instances of itself on each node in the cluster. When one of the cluster-aware actors receives a message, this can trigger that actor to send messages to the other instances of itself. In the case of the visualization, when an `EntityActor` starts or stops, it sends a message to the `HttpServerActor` entity. These entity messages are used to add or remove the corresponding tree elements that are used to show entities in the visualization tree.
 
 ~~~java
 private void notifyStart() {
@@ -245,3 +296,37 @@ There are two overloaded `forwardAction(...)` methods. The first method loops th
 The second `forwardAction` method builds an [actor selection](https://doc.akka.io/docs/akka/current/general/addressing.html#how-are-actor-references-obtained-), which is similar to actor references, using the passed member info and the path part of this actor's actor reference. Note that the forward flag in the forwarded message is set to false.
 
 So the flow here is that as each `EntityActor` starts or stops it sends an action message to an `HttpServerActor`, which happens to be an instance of the `HttpServerActor` running on the same node as the `EntityActor`. The `HttpServerActor` is cluster aware, it has the necessary code that forwards the action messages on to the other `HttpServerActors` running on each node in the cluster.
+
+### Cleanup
+
+~~~bash
+# Note, in the commands below, "kubectl" can be used instead of "oc" as an alternative or if you are using minikube
+
+# See the details of the exposed service
+$ oc get services
+NAME                TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)          AGE
+akka-cluster-demo   NodePort   172.30.106.6   <none>        8080:32531/TCP   9m
+
+# Remove it
+oc delete service akka-cluster-demo
+
+# Delete the deployment
+oc delete -f kubernetes/akka-cluster-deployment.yml
+
+# Delete the rolebinding
+oc delete -f kubernetes/akka-cluster-rolebindging.yml
+
+# Delete the project/namespace
+## If using OpenShift/MiniShift
+oc delete project akka-cluster-1
+## If using Minikube
+kubectl delete namespace akka-cluster-1
+~~~
+
+You can also stop the container services previously started with:
+
+~~~bash
+minishift stop # or: minikube stop
+
+docker stop default # assuming that it is the "default" container running
+~~~
