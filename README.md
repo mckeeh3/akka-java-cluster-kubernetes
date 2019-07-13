@@ -328,5 +328,5 @@ You can also stop the container services previously started with:
 ~~~bash
 minishift stop # or: minikube stop
 
-docker stop default # assuming that it is the "default" container running
+docker-machine stop default # assuming that it is the "default" container running
 ~~~
