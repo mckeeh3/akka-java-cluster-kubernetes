@@ -43,7 +43,7 @@ The tree leaf elements represent individual entity actors. The entity actors are
 
 ### Installation
 
-There are several options for how we set up a running Kubernetes environment. You can install everything on your local development system, or you can use one fo the cloud-based offerings. In addition to setting up a Kubernetes environment, you will also need to install Docker on your local development system. Of course, you will also need to install Java 8 and Maven 3.6.x.
+There are several options for how we set up a running Kubernetes environment. You can install everything on your local development system, or you can use one of the cloud-based offerings. In addition to setting up a Kubernetes environment, you will also need to install Docker on your local development system. Of course, you will also need to install Java 8 and Maven 3.6.x.
 
 #### Install Java and Maven
 
