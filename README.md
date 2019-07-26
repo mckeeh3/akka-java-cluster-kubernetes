@@ -60,7 +60,7 @@ You can find Java downloads at the followinf locations:
 * [Red Hat](https://access.redhat.com/articles/1299013)
 * [SAP](https://github.com/SAP/SapMachine)
 
-The [ApaptOpenJDK](https://adoptopenjdk.net/) is recommended as this is the JDK that Lightbend engineerin teams build against.
+The [AdoptOpenJDK](https://adoptopenjdk.net/) is recommended as this is the JDK that Lightbend engineering teams build against.
 
 Maven 3.6.x is available for download on the Apache Maven [download page](https://maven.apache.org/download.cgi).
 
