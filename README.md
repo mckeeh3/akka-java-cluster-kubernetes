@@ -152,13 +152,13 @@ The Docker image is deployed to a Kubernetes environment using the following two
 First, a Role and RoleBinging are set up. The Role and RoleBinding give the pods access to the API server. More details are provided in the [Kubernetes API](https://doc.akka.io/docs/akka-management/current/bootstrap/kubernetes-api.html#kubernetes-api) documentation, which is part of [Akka Cluster Bootstrap](https://doc.akka.io/docs/akka-management/current/bootstrap/index.html#akka-cluster-bootstrap). The Role and RoleBinding only need to be created once.
 
 ~~~bash
-kubectl apply -f kubernetes/akka-cluster-rolebindging.yml
+kubectl apply -f kubernetes/akka-cluster-rolebinding.yml
 ~~~
 
 Or, for example, deploy using MiniShift.
 
 ~~~bash
-oc apply -f kubernetes/akka-cluster-rolebindging.yml
+oc apply -f kubernetes/akka-cluster-rolebinding.yml
 ~~~
 
 The second step is to deploy the Docker image.
