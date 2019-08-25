@@ -14,7 +14,7 @@
         <akka.version>2.5.23</akka.version>
         <akka.http.version>10.1.8</akka.http.version>
         <akka.cluster.bootstrap.version>1.0.1</akka.cluster.bootstrap.version>
-        <docker.image.version>1.0.0</docker.image.version>
+        <docker.image.version>1.0.1</docker.image.version>
         <jackson.version>2.9.9</jackson.version>
         <junit.version>4.12</junit.version>
         <junit.jupiter.version>5.0.2</junit.jupiter.version>
@@ -160,7 +160,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>1.5</version>
+                <version>3.2.1</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -197,6 +197,8 @@
                 <artifactId>docker-maven-plugin</artifactId>
                 <version>0.27.2</version>
                 <configuration>
+                    <dockerHost>tcp://192.168.99.100:2376</dockerHost>
+                    <verbose>true</verbose>
                     <images>
                         <image>
                             <name>akka-cluster-demo:${docker.image.version}</name>
