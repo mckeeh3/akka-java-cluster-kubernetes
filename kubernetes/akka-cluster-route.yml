@@ -1,0 +1,11 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: akka-cluster-demo
+spec:
+  port:
+    targetPort: port-1
+  to:
+    kind: Service
+    name: akka-cluster-demo
+    weight: 100
