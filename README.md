@@ -90,7 +90,7 @@ TODO
 
 1. Make sure all environment variables are configured properly. You should be able to run the following commands:
   - `docker --version`
-  - `kubectl --version`
+  - `oc version` (openShift installation) or `kubectl version` (Kubernetes only installation) Note: both command require a running environment.
   - `minishift --version` (or `minikube --version`)
  and that you have access to all the executables which will be necessary, namely: `docker`, `kubectl`, `minishift` (or `minikube`)
 2. Start the docker service if it isn't running already (if using Docker Toolbox this should require running "Docker Quickstart Terminal" (with administrator privileges if applicable))
