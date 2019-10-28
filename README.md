@@ -80,13 +80,113 @@ Instructions and download are available on the [Welcome to MiniShift](https://do
 
 #### Using OpenShift Online
 
-TODO
+Go to the OpenShift Online site at https://manage.openshift.com.
+
+Create an account or login to your existing Red Hat account.
+
+Select an OpenShift Online plan. For testing you have the option to select the Free Plan. The Free Plan gets you access to the 60-day sandbox.
+
+Follow the directions to setup an OpenShift environment. Once the environment is ready open the Web Console.
+
+On the top right of the OpenShift Online Console click the arrow to the right of your user name.
+In the dropdown menu click "Copy Login Command."
+This will open a new browser tab. Click the "Display Token" link.
+Copy the "oc login ..." command and paste it into a command line window.
+Now the OpenShift CLI is connected to the OpenShift environment.
+
+~~~bash
+# cd into the project directory
+cd akka-java-cluster-kubernetes
+
+# Build the project, which creates a self contained JAR file and then loads it into a Docker image
+mvn clean package docker:build
+
+# Create the akka-cluster-1 project
+oc new-project akka-cluster-1 --display-name="Akka Cluster Demo" --description="A demonstration of Akka cluster sharding application running on Kubernetes"
+
+# Select the project as the currnet project
+oc project akka-cluster-1
+
+# Login to the OpenShift containter registry
+oc registry login
+
+# Login Docker into the container registry
+docker login $(oc registry info) -u $(oc whoami) -p $(oc whoami -t)
+
+# Tag the Docker image in preparation for uploading into the container registry
+docker tag akka-cluster-demo:1.0.0 $(oc registry info)/akka-cluster-1/akka-cluster-demo:1.0.0
+
+# Push the tagged Docker image into the container registry
+# This creates an image stream named akka-cluster-demo
+docker push $(oc registry info)/akka-cluster-1/akka-cluster-demo:1.0.0
+
+# Create the rolebinding used for Akka cluster bootstrap
+oc apply -f kubernetes/akka-cluster-openshift-online-rolebindging.yml
+
+# Create the network service and route to the HTTP endpoint on port 8080
+oc apply -f kubernetes/akka-cluster-openshift-online-service-route-http.yml
+
+# Use thw following to create the image name to be used in the deployment YAML file
+# Edit the akka-cluster-deployment.yml file changing the image: on line 30 with the image name from the below echo command
+echo $(oc registry info --internal=true)/$(oc project -q)/akka-cluster-demo:1.0.0
+
+# Deploy the Akka cluster demo app
+oc apply -f kubernetes/akka-cluster-deployment.yml
+
+# If all is well, you should see 3 running or starting pods
+oc get pods
+
+# This is the URL of the application web page
+echo http://$(oc get route akka-cluster-demo -o=jsonpath="{.status.ingress[0].host}")
+~~~
+Use the OpenShift console to review the project and the running app.
+
+On the console, select the Administrator user on the top left. Then select Networking and click Routes.
+On the Routes view on the right click the URL under Location. This shouls open a tab that will show the app visualization.
 
 #### Using IBM Cloud Kubernetes Service
 
-TODO
+Go to IBM Cloud at https://cloud.ibm.com/.
 
-### Preparation Steps
+Create an account or login to an existing IBM account. Select a plan. Free plans are available.
+
+From the service Catalog at https://cloud.ibm.com/catalog, select Kubernetes Service.
+
+Follow the directions for Creating Kubernetes clusters.
+
+~~~bash
+# cd into the project directory
+cd akka-java-cluster-kubernetes
+
+# Build the project, which creates a self contained JAR file and then loads it into a Docker image
+mvn clean package docker:build
+
+# Create the akka-cluster-1 project
+oc new-project akka-cluster-1 --description="Akka Java Cluster Kubernetes Example" --display-name="akka-cluster-1"
+
+# Select the project as the currnet project
+oc project akka-cluster-1
+
+# Tag the Docker image in preparation for uploading into the container registry
+docker tag akka-cluster-demo:1.0.0 <your-ibm-cloud-repo-name>/akka-cluster-demo:1.0.0
+
+# Push the tagged Docker image into the container registry
+docker push <your-ibm-cloud-repo-name>/akka-cluster-demo:1.0.0
+
+# Create the rolebinding used for Akka cluster bootstrap
+oc apply -f kubernetes/akka-cluster-rolebindging.yml
+
+# Deploy the Akka cluster demo app
+oc apply -f kubernetes/akka-cluster-deployment.yml
+
+# Make the HTTP endpoint port externally accessible
+oc expose deployment/akka-cluster-demo --type=NodePort --port 8080
+
+# Show the HTTP endpoint info created avoe
+oc get services/akka-cluster-demo
+~~~
+
+### Preparation Steps - local deployment
 
 1. Make sure all environment variables are configured properly. You should be able to run the following commands:
   - `docker --version`

@@ -24,8 +24,11 @@ spec:
     spec:
       containers:
       - name: akka-cluster-demo
-        image: akka-cluster-demo:1.0.0
-        imagePullPolicy: Never
+# Use the following line when running with minishift
+#        image: akka-cluster-demo:1.0.0
+# Use the following line when running with OpenShift and using the internal container registry
+        image: image-registry.openshift-image-registry.svc:5000/akka-cluster-1/akka-cluster-demo:1.0.0
+        imagePullPolicy: Always
         livenessProbe:
           tcpSocket:
             port: 8558

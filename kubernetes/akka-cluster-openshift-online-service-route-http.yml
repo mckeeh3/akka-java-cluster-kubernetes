@@ -1,0 +1,29 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: akka-cluster-demo
+  namespace: akka-cluster-1
+  labels:
+    app: akka-cluster-demo
+spec:
+  ports:
+    - name: http-endpoint
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: akka-cluster-demo
+  type: NodePort
+  sessionAffinity: None
+  externalTrafficPolicy: Cluster
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: akka-cluster-demo
+spec:
+  port:
+    targetPort: http-endpoint
+  to:
+    kind: Service
+    name: akka-cluster-demo
+    weight: 100
