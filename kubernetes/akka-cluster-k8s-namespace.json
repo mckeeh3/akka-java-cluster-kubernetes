@@ -1,0 +1,10 @@
+{
+  "apiVersion": "v1",
+  "kind": "Namespace",
+  "metadata": {
+    "name": "akka-cluster-1",
+    "labels": {
+      "name": "akka-cluster-1"
+    }
+  }
+}
