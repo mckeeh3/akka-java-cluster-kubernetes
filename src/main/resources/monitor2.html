@@ -174,8 +174,8 @@ var force = d3.layout.force()
     .size([w, h - 100]);
 
 var vis = d3.select('body').append('svg:svg')
-    .attr('width', w)
-    .attr('height', h);
+    .attr('width', w + 'px')
+    .attr('height', h + 'px');
 
 function update() {
   var nodes = flatten(root),

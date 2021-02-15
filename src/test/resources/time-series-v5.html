@@ -65,8 +65,8 @@ function activityChart(activityTagSelect, countExtractor) {
 
     const svg = d3.select('.graph')
             .append('svg')
-                .attr('width', width)
-                .attr('height', height + 50); // add 50 to make room for X axis
+                .attr('width', width + 'px')
+                .attr('height', (height + 50) + 'px'); // add 50 to make room for X axis
 
     const gGraph = svg.append('g')
             .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
